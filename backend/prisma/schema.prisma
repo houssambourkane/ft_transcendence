@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fieldReference"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  avatar     String
+  tfa        String?
+  intra_id   Int      @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  Friends   Friend[]    @relation("from")
+  Friendsto Friend[]    @relation("to")
+  Game1     Game[]      @relation("playerone")
+  Game2     Game[]      @relation("playertwo")
+  Room      Room[]
+  RoomUser  RoomUser[]
+  Message   Message[]
+  Blocked   Blocklist[] @relation("from")
+  Blockers  Blocklist[] @relation("to")
+}
+
+model Friend {
+  from       User?    @relation("from", fields: [from_id], references: [id], onDelete: Cascade)
+  to         User?    @relation("to", fields: [to_id], references: [id], onDelete: Cascade)
+  from_id    String
+  to_id      String
+  accepted   Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@id([from_id, to_id])
+}
+
+model Blocklist {
+  from       User?    @relation("from", fields: [from_id], references: [id], onDelete: Cascade)
+  to         User?    @relation("to", fields: [to_id], references: [id], onDelete: Cascade)
+  from_id    String
+  to_id      String
+  created_at DateTime @default(now())
+
+  @@id([from_id, to_id])
+}
+
+enum GameState {
+  live
+  finished
+}
+
+model Game {
+  id            String    @id @default(uuid())
+  background    String
+  player1       User?     @relation("playerone", fields: [player1_id], references: [id], onDelete: Cascade)
+  player2       User?     @relation("playertwo", fields: [player2_id], references: [id], onDelete: Cascade)
+  player1_id    String
+  player2_id    String
+  player1_score Int       @default(0)
+  player2_score Int       @default(0)
+  state         GameState @default(live)
+  created_at    DateTime  @default(now())
+}
+
+enum RoomType {
+  public
+  private
+  protected
+  dm
+}
+
+model Room {
+  id         String     @id @default(uuid())
+  name       String
+  password   String?
+  type       RoomType   @default(public)
+  created_at DateTime   @default(now())
+  RoomUser   RoomUser[]
+  Message    Message[]
+  User       User?      @relation(fields: [userId], references: [id])
+  userId     String?
+}
+
+model RoomUser {
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id    String
+  room       Room      @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  room_id    String
+  owner      Boolean   @default(false)
+  admin      Boolean   @default(false)
+  ban        Boolean   @default(false)
+  mute       DateTime?
+  created_at DateTime  @default(now())
+
+  @@id([user_id, room_id])
+}
+
+model Message {
+  id         Int      @id @unique @default(autoincrement())
+  content    String
+  created_at DateTime @default(now())
+  room       Room     @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  room_id    String
+  user       User     @relation(fields: [from_id], references: [id], onDelete: Cascade)
+  from_id    String
+}

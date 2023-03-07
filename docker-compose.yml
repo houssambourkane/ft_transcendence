@@ -1,0 +1,61 @@
+version: '3.8'
+services:
+  nest-postgres:
+    image: postgres:alpine
+    container_name: nest-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - nest-postgres:/var/lib/postgresql/data
+    networks:
+    - my_network
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
+    container_name: frontend
+    restart: on-failure
+    networks:
+    - my_network
+    ports:
+      - "80:80"
+    volumes:
+      - build_front:/usr/src/app
+      - caddy_data:/data
+      - caddy_config:/config
+  backend:
+    build:
+      context: ./backend/
+      args:
+        DATABASE_URL: ${DATABASE_URL}   
+        JWT_SECRET: ${JWT_SECRET}
+        REDIRECT_URL: ${REDIRECT_URL}
+        FILES_URL: ${FILES_URL}
+        CLIENT_ID: ${CLIENT_ID}
+        CLIENT_SECRET: ${CLIENT_SECRET}
+    container_name: backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - nest-postgres
+    networks:
+    - my_network
+    volumes:
+      - backend_files:/usr/src/app/files
+volumes:
+  backend_files:
+  caddy_data:
+  caddy_config:
+  build_front:
+  nest-postgres:
+    name: nest-postgres-db
+networks:
+  my_network:
+    driver: bridge
